@@ -1,0 +1,70 @@
+{
+  "name": "Meta Ads Daily Report to Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 24, "triggerAtHour": 7}]
+        }
+      },
+      "name": "Daily 7 AM Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v20.0/{{$node['Config'].json.adAccountId}}/insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "access_token", "value": "={{$node['Config'].json.accessToken}}"},
+            {"name": "fields", "value": "spend,impressions,clicks,ctr,cpc,actions,purchase_roas"},
+            {"name": "date_preset", "value": "yesterday"},
+            {"name": "level", "value": "account"}
+          ]
+        }
+      },
+      "name": "Meta API - Get Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Meta Ads data and format for Slack\nconst data = $input.first().json.data[0];\n\n// Extract metrics\nconst spend = parseFloat(data.spend || 0);\nconst impressions = parseInt(data.impressions || 0);\nconst clicks = parseInt(data.clicks || 0);\nconst ctr = parseFloat(data.ctr || 0);\nconst cpc = parseFloat(data.cpc || 0);\n\n// Find conversions from actions array\nlet conversions = 0;\nlet purchaseValue = 0;\nif (data.actions) {\n  const purchaseAction = data.actions.find(a => a.action_type === 'purchase');\n  if (purchaseAction) conversions = parseInt(purchaseAction.value);\n}\n\n// Calculate CPA and ROAS\nconst cpa = conversions > 0 ? spend / conversions : 0;\nconst roas = data.purchase_roas ? parseFloat(data.purchase_roas[0].value) : 0;\n\n// Format Slack message\nconst message = `📘 *Meta Ads Daily Report*\\n${new Date().toLocaleDateString()}\\n\\n` +\n  `💰 *Spend:* $${spend.toFixed(2)}\\n` +\n  `👁️ *Impressions:* ${impressions.toLocaleString()}\\n` +\n  `🖱️ *Clicks:* ${clicks.toLocaleString()}\\n` +\n  `📈 *CTR:* ${(ctr * 100).toFixed(2)}%\\n` +\n  `💵 *CPC:* $${cpc.toFixed(2)}\\n` +\n  `🎯 *Conversions:* ${conversions}\\n` +\n  `📊 *CPA:* $${cpa.toFixed(2)}\\n` +\n  `🔥 *ROAS:* ${roas.toFixed(2)}x`;\n\nreturn [{json: {message, spend, conversions, cpa, roas}}];"
+      },
+      "name": "Process Data",
+      "type": "n8n-nodes-base.code",
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#meta-ads-daily",
+        "text": "={{$json.message}}"
+      },
+      "name": "Slack",
+      "type": "n8n-nodes-base.slack",
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {"name": "adAccountId", "value": "act_YOUR_AD_ACCOUNT_ID"},
+            {"name": "accessToken", "value": "YOUR_ACCESS_TOKEN"}
+          ]
+        }
+      },
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "position": [400, 300]
+    }
+  ],
+  "connections": {
+    "Daily 7 AM Trigger": {"main": [[{"node": "Config", "type": "main", "index": 0}]]},
+    "Config": {"main": [[{"node": "Meta API - Get Insights", "type": "main", "index": 0}]]},
+    "Meta API - Get Insights": {"main": [[{"node": "Process Data", "type": "main", "index": 0}]]},
+    "Process Data": {"main": [[{"node": "Slack", "type": "main", "index": 0}]]}
+  }
+}

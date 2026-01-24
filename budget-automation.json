@@ -1,0 +1,81 @@
+{
+  "name": "Meta Ads - Budget Automation Rules",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {"interval": [{"field": "hours", "hoursInterval": 4}]}
+      },
+      "name": "Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {"name": "adAccountId", "value": "act_YOUR_AD_ACCOUNT_ID"},
+            {"name": "accessToken", "value": "YOUR_ACCESS_TOKEN"}
+          ],
+          "number": [
+            {"name": "pauseCpaThreshold", "value": 50},
+            {"name": "scaleRoasThreshold", "value": 3},
+            {"name": "budgetIncreasePercent", "value": 20},
+            {"name": "maxDailyBudget", "value": 500}
+          ]
+        }
+      },
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v20.0/{{$json.adAccountId}}/campaigns",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {"name": "access_token", "value": "={{$json.accessToken}}"},
+            {"name": "fields", "value": "id,name,status,daily_budget,insights{spend,conversions,purchase_roas}"},
+            {"name": "filtering", "value": "[{\"field\":\"effective_status\",\"operator\":\"IN\",\"value\":[\"ACTIVE\"]}]"}
+          ]
+        }
+      },
+      "name": "Get Active Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evaluate campaigns against automation rules\nconst config = $('Config').first().json;\nconst campaigns = $input.first().json.data || [];\nconst actions = [];\n\ncampaigns.forEach(campaign => {\n  const insights = campaign.insights?.data?.[0] || {};\n  const spend = parseFloat(insights.spend || 0);\n  const conversions = parseInt(insights.conversions || 0);\n  const roas = insights.purchase_roas ? parseFloat(insights.purchase_roas[0].value) : 0;\n  const cpa = conversions > 0 ? spend / conversions : 999;\n  const dailyBudget = campaign.daily_budget ? campaign.daily_budget / 100 : 0;\n\n  // Skip if not enough spend to evaluate\n  if (spend < 20) return;\n\n  // Rule 1: Pause if CPA too high\n  if (cpa > config.pauseCpaThreshold) {\n    actions.push({\n      campaignId: campaign.id,\n      campaignName: campaign.name,\n      action: 'PAUSE',\n      reason: `CPA $${cpa.toFixed(2)} exceeds $${config.pauseCpaThreshold} threshold`,\n      currentCpa: cpa\n    });\n    return;\n  }\n\n  // Rule 2: Scale if ROAS is good\n  if (roas > config.scaleRoasThreshold) {\n    const newBudget = Math.min(\n      dailyBudget * (1 + config.budgetIncreasePercent / 100),\n      config.maxDailyBudget\n    );\n    \n    if (newBudget > dailyBudget) {\n      actions.push({\n        campaignId: campaign.id,\n        campaignName: campaign.name,\n        action: 'INCREASE_BUDGET',\n        reason: `ROAS ${roas.toFixed(2)}x exceeds ${config.scaleRoasThreshold}x threshold`,\n        currentBudget: dailyBudget,\n        newBudget: newBudget,\n        roas: roas\n      });\n    }\n  }\n});\n\nreturn actions.map(a => ({json: a}));"
+      },
+      "name": "Evaluate Rules",
+      "type": "n8n-nodes-base.code",
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [{"value1": "={{$json.action}}", "value2": "PAUSE"}]
+        }
+      },
+      "name": "Is Pause Action?",
+      "type": "n8n-nodes-base.if",
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#meta-ads-alerts",
+        "text": "={{$json.action === 'PAUSE' ? '⏸️' : '📈'}} *{{$json.action}}*: {{$json.campaignName}}\n→ {{$json.reason}}"
+      },
+      "name": "Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "Every 4 Hours": {"main": [[{"node": "Config", "type": "main", "index": 0}]]},
+    "Config": {"main": [[{"node": "Get Active Campaigns", "type": "main", "index": 0}]]},
+    "Get Active Campaigns": {"main": [[{"node": "Evaluate Rules", "type": "main", "index": 0}]]},
+    "Evaluate Rules": {"main": [[{"node": "Slack Alert", "type": "main", "index": 0}]]}
+  }
+}
