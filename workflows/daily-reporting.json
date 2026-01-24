@@ -1,0 +1,81 @@
+{
+  "name": "Meta Ads Daily Reporting with Gemini Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "daily",
+        "hour": 5,
+        "minute": 0
+      },
+      "name": "Schedule - Daily 5 AM",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getAll",
+        "accountId": "{{ $env.META_ADVERTISER_ID }}",
+        "limit": 100
+      },
+      "name": "Get Meta Campaigns",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemini-pro",
+        "prompt": "Analyze these Meta ad campaign metrics and provide 3 key insights and 2 actionable recommendations:\n\nCampaigns: {{ $json.campaigns }}\nTotal Spend: {{ $json.total_spend }}\nAverage ROAS: {{ $json.avg_roas }}\n\nFormat as concise bullet points."
+      },
+      "name": "Gemini Analysis",
+      "type": "n8n-nodes-base.googleVertexAi",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "spreadsheetId": "{{ $env.GOOGLE_SHEETS_ID }}",
+        "range": "Daily Reports!A1",
+        "values": "{{ JSON.stringify([['Date', 'Total Spend', 'Avg ROAS', 'Campaigns', 'Top Performer', 'Insights'], [new Date().toLocaleDateString(), $json.total_spend, $json.avg_roas, $json.campaigns.length, $json.top_campaign, $json.gemini_insights]]) }}"
+      },
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{ $env.SLACK_WEBHOOK }}",
+        "text": "Slack body",
+        "bodyParametersUi": {
+          "bodyParameters": [
+            {
+              "name": "text",
+              "value": "Daily Meta Ads Report \\n Total Spend: ${{ $json.total_spend }}\\n Avg ROAS: {{ $json.avg_roas }}\\n {{ $json.gemini_insights }}"
+            }
+          ]
+        }
+      },
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Schedule - Daily 5 AM": {
+      "main": [[{"node": "Get Meta Campaigns", "type": "main", "index": 0}]]
+    },
+    "Get Meta Campaigns": {
+      "main": [[{"node": "Gemini Analysis", "type": "main", "index": 0}]]
+    },
+    "Gemini Analysis": {
+      "main": [[{"node": "Log to Google Sheets", "type": "main", "index": 0}]]
+    },
+    "Log to Google Sheets": {
+      "main": [[{"node": "Send Slack Alert", "type": "main", "index": 0}]]
+    }
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "name": "Meta Ads Budget Optimization - Hourly",
+  "nodes": [
+    {
+      "parameters": {
+        "trigger": "interval",
+        "interval": "hour"
+      },
+      "name": "Schedule - Hourly",
+      "type": "n8n-nodes-base.interval",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "getInsights",
+        "accountId": "{{ $env.META_ADVERTISER_ID }}",
+        "timeRange": "7d",
+        "metrics": ["spend", "actions", "action_values"]
+      },
+      "name": "Get Campaign Insights (7d)",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaigns = $input.all();
+const optimized = [];
+
+for (const campaign of campaigns) {
+  const spend = parseFloat(campaign.spend);
+  const revenue = parseFloat(campaign.action_values);
+  const roas = revenue / spend;
+  
+  campaign.roas = roas;
+  
+  if (roas > 2.0) {
+    campaign.action = 'scale';
+    campaign.budget_adjustment = 1.10; // +10%
+  } else if (roas < 0.5) {
+    campaign.action = 'pause';
+  } else {
+    campaign.action = 'hold';
+  }
+  
+  optimized.push(campaign);
+}
+
+return optimized;"
+      },
+      "name": "Calculate ROAS & Actions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "condition": "is equal to",
+              "value1": "{{ $json.action }}",
+              "value2": "scale"
+            }
+          ]
+        }
+      },
+      "name": "Scale Winners?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "update",
+        "campaignId": "{{ $json.id }}",
+        "dailyBudget": "{{ $json.daily_budget * $json.budget_adjustment }}"
+      },
+      "name": "Update Budget (+10%)",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [1050, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "condition": "is equal to",
+              "value1": "{{ $json.action }}",
+              "value2": "pause"
+            }
+          ]
+        }
+      },
+      "name": "Pause Underperformers?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "resource": "campaign",
+        "operation": "update",
+        "campaignId": "{{ $json.id }}",
+        "status": "PAUSED"
+      },
+      "name": "Pause Campaign",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "spreadsheetId": "{{ $env.GOOGLE_SHEETS_ID }}",
+        "range": "Budget Optimization Log!A:F",
+        "values": "{{ JSON.stringify([[new Date().toISOString(), $json.name, $json.roas, $json.action, $json.daily_budget, 'Optimized']]) }}"
+      },
+      "name": "Log to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [1050, 450]
+    }
+  ],
+  "connections": {
+    "Schedule - Hourly": {
+      "main": [[{"node": "Get Campaign Insights (7d)", "type": "main", "index": 0}]]
+    },
+    "Get Campaign Insights (7d)": {
+      "main": [[{"node": "Calculate ROAS & Actions", "type": "main", "index": 0}]]
+    },
+    "Calculate ROAS & Actions": {
+      "main": [[{"node": "Scale Winners?", "type": "main", "index": 0}, {"node": "Pause Underperformers?", "type": "main", "index": 0}]]
+    },
+    "Scale Winners?": {
+      "main": [[{"node": "Update Budget (+10%)", "type": "main", "index": 0}]]
+    },
+    "Pause Underperformers?": {
+      "main": [[{"node": "Pause Campaign", "type": "main", "index": 0}]]
+    },
+    "Update Budget (+10%)": {
+      "main": [[{"node": "Log to Sheets", "type": "main", "index": 0}]]
+    },
+    "Pause Campaign": {
+      "main": [[{"node": "Log to Sheets", "type": "main", "index": 0}]]
+    }
+  }
+}
