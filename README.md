@@ -5,11 +5,11 @@
 > **No coding required!** Just import, configure, and activate.
 
 [![n8n](https://img.shields.io/badge/n8n-workflow-ff6d5a.svg)](https://n8n.io)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-yellow.svg)](licence)
 
 ---
 
-## 🎯 Who Is This For?
+## Who Is This For?
 
 | User Type | What You Get |
 |-----------|--------------|
@@ -19,7 +19,7 @@
 
 ---
 
-## 📦 Available Workflows
+## Available Workflows
 
 ### 1. `daily-reporting.json` - Daily Performance Report
 
@@ -29,11 +29,11 @@
 - Sends formatted report to Slack
 
 **Metrics included:**
-- 💰 Spend
-- 👁️ Impressions & Reach
-- 🖱️ Clicks & CTR
-- 🎯 Conversions & CPA
-- 🔥 ROAS
+- Spend
+- Impressions & Reach
+- Clicks & CTR
+- Conversions & CPA
+- ROAS
 
 **Use case:**
 > "I want my team to see Meta Ads performance every morning without logging into Ads Manager."
@@ -61,7 +61,7 @@
 
 ---
 
-### 3. `budget-optimization.json` - Advanced Budget Allocation
+### 3. `budget-optimisation.json` - Advanced Budget Allocation
 
 **What it does:**
 - Reallocates budget from underperformers to top performers
@@ -73,7 +73,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Step 1: Import Workflow
 
@@ -107,9 +107,9 @@ Each workflow has a **Config** node. Update:
 
 ---
 
-## 📊 Use Cases by Business Type
+## Use Cases by Business Type
 
-### 🛒 E-Commerce
+### E-Commerce
 
 **Workflow:** `budget-automation.json`
 
@@ -128,7 +128,7 @@ maxDailyBudget: 500
 
 ---
 
-### 📧 Lead Generation
+### Lead Generation
 
 **Workflow:** `daily-reporting.json` + `budget-automation.json`
 
@@ -145,7 +145,7 @@ scaleRoasThreshold: 2.0 (leads have different ROAS)
 
 ---
 
-### 📱 App Install Campaigns
+### App Install Campaigns
 
 **Workflow:** `budget-automation.json`
 
@@ -157,21 +157,21 @@ frequencyThreshold: 4.0 (app users tolerate higher frequency)
 
 ---
 
-## 📁 Files In This Repository
+## Files In This Repository
 
 ```
 n8n-meta-ads-workflows/
 ├── README.md
-├── LICENSE
+├── licence
 ├── .gitignore
-├── daily-reporting.json      # Daily Slack reports
-├── budget-automation.json    # Auto pause/scale rules
-└── budget-optimization.json  # Budget reallocation
+├── daily-reporting.json # Daily Slack reports
+├── budget-automation.json # Auto pause/scale rules
+└── budget-optimisation.json # Budget reallocation
 ```
 
 ---
 
-## 🔧 JavaScript Code Snippets
+## JavaScript Code Snippets
 
 ### Calculate CPA & ROAS
 ```javascript
@@ -183,26 +183,26 @@ const roas = data.purchase_roas ? parseFloat(data.purchase_roas[0].value) : 0;
 
 ### Format Slack Message
 ```javascript
-const message = `📘 *Meta Ads Report*\n` +
-  `💰 Spend: $${spend.toFixed(2)}\n` +
-  `🎯 Conversions: ${conversions}\n` +
-  `📊 CPA: $${cpa.toFixed(2)}\n` +
-  `🔥 ROAS: ${roas.toFixed(2)}x`;
+const message = ` *Meta Ads Report*\n` +
+ ` Spend: $${spend.toFixed(2)}\n` +
+ ` Conversions: ${conversions}\n` +
+ ` CPA: $${cpa.toFixed(2)}\n` +
+ ` ROAS: ${roas.toFixed(2)}x`;
 ```
 
 ### Evaluate Automation Rules
 ```javascript
 if (cpa > config.pauseCpaThreshold) {
-  actions.push({action: 'PAUSE', reason: `CPA too high`});
+ actions.push({action: 'PAUSE', reason: `CPA too high`});
 }
 if (roas > config.scaleRoasThreshold) {
-  actions.push({action: 'SCALE', reason: `ROAS excellent`});
+ actions.push({action: 'SCALE', reason: `ROAS excellent`});
 }
 ```
 
 ---
 
-## 🔗 Related Repositories
+## Related Repositories
 
 | Repo | Description |
 |------|-------------|
@@ -212,7 +212,7 @@ if (roas > config.scaleRoasThreshold) {
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: Do I need n8n Cloud or self-hosted?**
 A: Either works. Self-hosted is free, Cloud starts at €20/month.
@@ -225,15 +225,15 @@ A: Absolutely! Import, customize, and save your own versions.
 
 ---
 
-## 📞 Support
+## Support
 
 - **Email:** gordon@empireamplify.com.au
 - **Issues:** Open a GitHub issue
 
 ---
 
-## 📄 License
+## licence
 
-MIT License - see [LICENSE](LICENSE) file.
+MIT licence - see [licence](licence) file.
 
 **Empire Amplify** | Melbourne, Australia | 2025
