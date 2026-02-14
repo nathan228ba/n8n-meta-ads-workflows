@@ -26,7 +26,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const campaigns = $input.all();
+        "jsCode": "const campaigns" = $input.all();
 const optimized = [];
 
 for (const campaign of campaigns) {
